@@ -3,11 +3,11 @@ var biofilm
 function setup(){
 
     let bio_cfg = {
-        width: 500,
-        height: 500,
+        width: 400,
+        height: 400,
         init_cells: 35,        
         max_cells: 100000,
-        chamber_size: 400,
+        chamber_size: 300,
         cell_size: 5,
         temperature: 28,
         shoving_force: 0.03,        
@@ -29,10 +29,11 @@ function setup(){
         biofilm.update()        
         for(let i=0; i < 1; i++ ) biofilm.update_grid()
         biofilm.build_quadtree(10)            
-        biofilm.draw_mouseover(rect)                    
+                          
         biofilm.draw_metabolites()        
         biofilm.draw_cells()
         biofilm.draw_chamber()
+        biofilm.draw_mouseover(rect) 
         //biofilm.draw_quadtree()
        
         let frame = requestAnimationFrame(animate);    

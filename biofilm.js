@@ -40,7 +40,7 @@ class Biofilm {
         // Resource grid
         this.grid = []
         this.next_grid = []
-        this.scale = 10
+        this.scale = 5
         for(let x = 0; x < this.width/this.scale; x++){            
             this.grid[x] = []
             this.next_grid[x] = []
@@ -167,7 +167,7 @@ class Biofilm {
     // draw_chamberwalls
     draw_chamber(){
         for(let c of this.canvases){
-            this.ctx.strokeRect(0,0,this.width,this.height)   
+            // this.ctx.strokeRect(0,0,this.width,this.height)   
             c.fillStyle = "#DDDDDD"        
             c.fillRect(0,0,this.left,this.bottom)
             c.fillRect(this.right,0,this.left,this.bottom)
@@ -176,7 +176,7 @@ class Biofilm {
             c.lineWidth = 10
             this.ctx.strokeStyle = "black";
             this.ctx.lineWidth=2;
-            this.ctx.strokeRect(rect.left_bound,rect.top_bound,rect.w,rect.h)
+            // this.ctx.strokeRect(rect.left_bound,rect.top_bound,rect.w,rect.h)
         }
     }
 
@@ -197,7 +197,8 @@ class Biofilm {
             this.ctx.beginPath()            
             this.ctx.arc(c.x,c.y,c.size,0,2 * Math.PI)  
             this.ctx.fill()
-            this.ctx.fillStyle = "rgba(0,0,0,"+(1-c.growthrate)+")"
+            let blackness = 1-(c.growthrate*2)
+            this.ctx.fillStyle = "rgba(0,0,0,"+blackness+")"
             this.ctx.beginPath()
             this.ctx.arc(c.x,c.y,c.size,0,2 * Math.PI)  
             this.ctx.fill()     
@@ -208,7 +209,6 @@ class Biofilm {
     }
 
     draw_metabolites(){
-        
         this.ctx2.fillRect(0,0,this.width,this.height)
         this.ctx2.fillStyle="white"
         
@@ -226,7 +226,7 @@ class Biofilm {
                         let y = j*this.scale + m
                         var off = (y * id.width + x) * 4;
                         var scale = 3
-                        if(window['metabolite_display'] == 'R') scale = 0.2
+                        if(window['metabolite_display'] == 'R') scale = 10
                         var col = Math.floor(this.grid[i][j][window['metabolite_display']]*scale)               
                         pixels[off] = this.viridis[Math.max(0,Math.min(col,this.viridis.length-1))][0]
                         pixels[off + 1] = this.viridis[Math.max(0,Math.min(col,this.viridis.length-1))][1]
@@ -237,7 +237,8 @@ class Biofilm {
                 
             }
         }
-        this.ctx2.putImageData(id, 0, 0);
+        this.ctx2.putImageData(id, 0, 0); 
+
     }
 
     // Deprecated, hiermee kon je cellen binnen range een style geven. Niet moeilijk om te repareren :)
@@ -275,16 +276,16 @@ class Biofilm {
             this.y_speed = 0.01*this.config.temperature*(Math.random()-0.5)    // brownian motion     
               
             if(!c.in_chamber) {       
-                if(c.y>=this.bottom) this.cells.splice(this.cells.indexOf(c),1)         
-                // if(c.x+c.size >= this.width) {
-                //     this.cells.splice(this.cells.indexOf(c),1)
-                //     continue
-                // }
-                // c.acceleration = c.acceleration*c.acceleration
-                // this.x_speed += Math.random()*5*c.acceleration
-                // this.y_speed += Math.random()*1*c.acceleration
-                // c.size-=.05
-                // if(c.size <= 0) this.cells.splice(this.cells.indexOf(c),1)                
+               // if(c.y>=this.bottom) this.cells.splice(this.cells.indexOf(c),1)         
+                if(c.x+c.size >= this.width) {
+                    this.cells.splice(this.cells.indexOf(c),1)
+                    continue
+                }
+                c.acceleration = c.acceleration*c.acceleration
+                this.x_speed += Math.random()*5*c.acceleration
+                this.y_speed += Math.random()*1*c.acceleration
+                c.size-=.05
+                if(c.size <= 0) this.cells.splice(this.cells.indexOf(c),1)                
             }
             else{
                 
@@ -360,7 +361,7 @@ class Biofilm {
             c.y += this.y_speed*(0.2*c.overlaps+1)
             
             //if(c.in_chamber && c.overlaps < 3 && c.biomass>10 && this.cells.length < this.max_cells) { // hier weet ik ook niet overlaps gebruiken?
-            if(c.in_chamber && c.overlaps < 100 && c.biomass>10 && this.cells.length < this.max_cells) { // hier weet ik ook niet overlaps gebruiken?
+            if(c.in_chamber && c.overlaps <= 2 && c.biomass>50 && this.cells.length < this.max_cells) { // hier weet ik ook niet overlaps gebruiken?
                 let newcell = new Cell(c) 
                 this.cells.push(newcell)
             }
