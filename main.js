@@ -1,24 +1,24 @@
 var biofilm 
 
-function setup(){        
+function setup(){
 
     let bio_cfg = {
-        width: 400,
-        height: 400,
-        init_cells: 25,        
+        width: 500,
+        height: 500,
+        init_cells: 35,        
         max_cells: 100000,
-        chamber_size: 350,
+        chamber_size: 400,
         cell_size: 5,
         temperature: 28,
         shoving_force: 0.03,        
         interaction_range: 6,
-        initial_R: 0
+        initial_R: 1
     }
 
     biofilm = new Biofilm(bio_cfg)
     
-    biofilm.initialise(bio_cfg.init_cells)
-    biofilm.build_quadtree(1)
+    biofilm.initialise()
+    biofilm.build_quadtree(10)
     biofilm.create_display()
     biofilm.draw_quadtree()
 
@@ -28,12 +28,12 @@ function setup(){
         
         biofilm.update()        
         for(let i=0; i < 1; i++ ) biofilm.update_grid()
-        biofilm.build_quadtree(1)            
+        biofilm.build_quadtree(10)            
         biofilm.draw_mouseover(rect)                    
         biofilm.draw_metabolites()        
         biofilm.draw_cells()
         biofilm.draw_chamber()
-        // biofilm.draw_quadtree()
+        //biofilm.draw_quadtree()
        
         let frame = requestAnimationFrame(animate);    
         time++ 
@@ -46,5 +46,17 @@ function setup(){
     }               
     var startTime = performance.now()
     requestAnimationFrame(animate);
+
+    // while(time < 1000){
+    //     biofilm.update()        
+    //     for(let i=0; i < 1; i++ ) biofilm.update_grid()
+    //     biofilm.build_quadtree(10)            
+    //     biofilm.draw_mouseover(rect)                    
+    //     biofilm.draw_metabolites()        
+    //     biofilm.draw_cells()
+    //     biofilm.draw_chamber()
+    //     biofilm.draw_quadtree()
+    //     time++ 
+    // }
     
 }

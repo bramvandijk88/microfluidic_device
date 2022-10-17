@@ -1,13 +1,15 @@
 let _unique_cell_id = 0;
-let fetchCellID = () => _unique_cell_id++;
+let generateCellID = () => _unique_cell_id++;
 
 let rect = new Border(0,0,40,40) // Mouse over rect
 let mouseDown = false
 
 class Biofilm {
+
     constructor(cfg){
         this.config = cfg
         this.max_cells = cfg.max_cells
+        this.init_cells = cfg.init_cells
         this.width = cfg.width
         this.height = cfg.height
         window['metabolite_display'] = 'R'
@@ -19,10 +21,10 @@ class Biofilm {
                         
     }
 
-    initialise(n_cells){
-        for(let i=0; i<n_cells; i++) 
+    initialise(){
+        for(let i=0; i<this.init_cells; i++) 
         {
-            let type = Math.random() < 0.5 ? 1: 2
+            let type = Math.random() < 0.5 ? 1 : 2
             let random_cell = {x: 0.5*this.config.chamber_size*((Math.random()*2)-1)+this.width/2,
                                 y: 0.5*this.config.chamber_size*((Math.random()*2)-1)+this.height/2,
                                 growthrate: Math.random(),
@@ -38,7 +40,7 @@ class Biofilm {
         // Resource grid
         this.grid = []
         this.next_grid = []
-        this.scale = 4
+        this.scale = 10
         for(let x = 0; x < this.width/this.scale; x++){            
             this.grid[x] = []
             this.next_grid[x] = []
@@ -59,7 +61,8 @@ class Biofilm {
         let rgbs = [[68, 1, 84], [59, 82, 139], [33, 144, 140], [93, 201, 99], [253, 231, 37]]
         let segment_len = Math.ceil(n / (rgbs.length-1))
         let total_added_colours = 0
-
+        
+        // Interpolation so you have 'n' viridis colours stored in an array (this.viridis)
         for (let arr = 0; arr < rgbs.length - 1 ; arr++) {
             let arr1 = rgbs[arr]
             let arr2 = rgbs[arr+1]
@@ -161,14 +164,19 @@ class Biofilm {
         this.qt.insert_points(this.cells)        
     }
 
+    // draw_chamberwalls
     draw_chamber(){
-        for(let c of this.canvases){      
+        for(let c of this.canvases){
+            this.ctx.strokeRect(0,0,this.width,this.height)   
             c.fillStyle = "#DDDDDD"        
             c.fillRect(0,0,this.left,this.bottom)
             c.fillRect(this.right,0,this.left,this.bottom)
             c.fillRect(0,0,this.width,this.top)
             c.strokeStyle = 'black';        
             c.lineWidth = 10
+            this.ctx.strokeStyle = "black";
+            this.ctx.lineWidth=2;
+            this.ctx.strokeRect(rect.left_bound,rect.top_bound,rect.w,rect.h)
         }
     }
 
@@ -179,15 +187,13 @@ class Biofilm {
     draw_cells(){        
         this.ctx.fillStyle="white"
         this.ctx.fillRect(0,0,this.width,this.height)
-        
-        this.ctx.lineWidth=3;
+        this.ctx.lineWidth=3
         this.ctx.strokeStyle = "black"
         for(let c of this.cells){
             let fillcol = c.type == 1 ? "rgb(200,200,0)" : "rgb(0,0,255)"
             if(!c.in_chamber) this.ctx.globalAlpha = 0.3;            
             else this.ctx.globalAlpha=0.8
-            this.ctx.fillStyle = fillcol
-            
+            this.ctx.fillStyle = fillcol   
             this.ctx.beginPath()            
             this.ctx.arc(c.x,c.y,c.size,0,2 * Math.PI)  
             this.ctx.fill()
@@ -195,7 +201,6 @@ class Biofilm {
             this.ctx.beginPath()
             this.ctx.arc(c.x,c.y,c.size,0,2 * Math.PI)  
             this.ctx.fill()     
-
             this.ctx.closePath()                           
         }
         this.ctx.globalAlpha=1.0
@@ -235,32 +240,31 @@ class Biofilm {
         this.ctx2.putImageData(id, 0, 0);
     }
 
+    // Deprecated, hiermee kon je cellen binnen range een style geven. Niet moeilijk om te repareren :)
     draw_mouseover(rect){
         let cells_in_range = this.qt.getpoints(rect)        
         for(let c of cells_in_range){
-            if(mouseDown) this.cells.splice(this.cells.indexOf(c),1)
-
-            
+            if(mouseDown) this.cells.splice(this.cells.indexOf(c),1)    
             this.ctx.lineWidth=2
             this.ctx.strokeStyle="white"
             this.ctx.beginPath()
             this.ctx.arc(c.x,c.y,c.size,0,2 * Math.PI)  
             this.ctx.stroke()
         }
-    }
-
-   
+    } 
 
     update(){
         // update cells
-        let upper = (this.width - this.config.chamber_size)/2
+        let left = (this.width - this.config.chamber_size)/2
         let top = (this.height - this.config.chamber_size)/2
-        let bottom = this.height - upper
+        let bottom = this.height - left
         let right = this.width - top
+
+        // reset overlaps to 0
         for(let c of this.cells) c.overlaps = 0
         
-        for(let c of this.cells){  
-            
+
+        for(let c of this.cells){ 
             c.growthrate= 0.0
             if(c.y >= bottom){      
                c.in_chamber = false
@@ -270,16 +274,17 @@ class Biofilm {
             this.x_speed = 0.01*this.config.temperature*(Math.random()-0.5)    // brownian motion
             this.y_speed = 0.01*this.config.temperature*(Math.random()-0.5)    // brownian motion     
               
-            if(!c.in_chamber) {                
-                if(c.x+c.size >= this.width) {
-                    this.cells.splice(this.cells.indexOf(c),1)
-                    continue
-                }
-                c.acceleration = c.acceleration*c.acceleration
-                this.x_speed += Math.random()*5*c.acceleration
-                this.y_speed += Math.random()*1*c.acceleration
-                c.size-=.05
-                if(c.size <= 0) this.cells.splice(this.cells.indexOf(c),1)                
+            if(!c.in_chamber) {       
+                if(c.y>=this.bottom) this.cells.splice(this.cells.indexOf(c),1)         
+                // if(c.x+c.size >= this.width) {
+                //     this.cells.splice(this.cells.indexOf(c),1)
+                //     continue
+                // }
+                // c.acceleration = c.acceleration*c.acceleration
+                // this.x_speed += Math.random()*5*c.acceleration
+                // this.y_speed += Math.random()*1*c.acceleration
+                // c.size-=.05
+                // if(c.size <= 0) this.cells.splice(this.cells.indexOf(c),1)                
             }
             else{
                 
@@ -289,9 +294,7 @@ class Biofilm {
                     let uptake = this.grid[x_on_grid][y_on_grid].R * 0.01* (1-c.resources/(c.resources+0.1)) 
                     this.grid[x_on_grid][y_on_grid].R -= uptake
                     c.resources += uptake
-                    // console.log(c.resources,uptake)
                 
-
                     if(c.type==1) {     
                         let fract_converted = 0.5* c.resources
                         c.BB1 += fract_converted*150
@@ -306,7 +309,6 @@ class Biofilm {
                         this.grid[x_on_grid][y_on_grid].BB2 -= upBB2
                     }
                     if(c.type==2) {
-                        
                         let fract_converted = 0.5 * c.resources
                         c.BB2 += fract_converted*150
                         c.resources-= fract_converted
@@ -322,7 +324,7 @@ class Biofilm {
                     
                 }                
 
-                if(c.x-c.size <= upper) this.x_speed += upper-(c.x-c.size)+this.config.shoving_force
+                if(c.x-c.size <= left) this.x_speed += left-(c.x-c.size)+this.config.shoving_force
                 if(c.y-c.size <= top) this.y_speed += top-(c.y-c.size)+this.config.shoving_force
                 if(c.x+c.size >= right) this.x_speed -= (c.x+c.size)-right+this.config.shoving_force
             }
@@ -334,30 +336,31 @@ class Biofilm {
                 if(c2 == c || !c.in_chamber || !c2.in_chamber) {
                     continue
                 }
-                let dx = (c.x + c.size) - (c2.x + c2.size)
-                let dy = (c.y + c.size) - (c2.y + c2.size)
+                //let dx = (c.x + c.size) - (c2.x + c2.size)
+                //let dy = (c.y + c.size) - (c2.y + c2.size)
+                let dx = (c.x) - (c2.x)
+                let dy = (c.y) - (c2.y)
                 let dist = Math.sqrt( dx * dx + dy * dy )    
 
                 if(dist < (c.size + c2.size) ) {
-
                     this.x_speed += this.config.shoving_force*(c.x - c2.x)*(c2.size*2.0-dist) 
                     this.y_speed += this.config.shoving_force*(c.y - c2.y)*(c2.size*2.0-dist) 
                     c.overlaps++
                 }                     
             }
-
             
-            c.growthrate += ((c.BB1 * c.BB2 ) / ((c.BB1 * c.BB2 )+1.0) ) * 0.99
+            c.growthrate += ((c.BB1 * c.BB2 ) / ((c.BB1 * c.BB2 )+1.0) ) * 0.99 // deze slaat nergens op
             
 
             c.BB1 *= 1-c.growthrate
             c.BB2 *= 1-c.growthrate
             c.biomass += c.growthrate
                        
-            c.x += this.x_speed*(0.2*c.overlaps+1)
+            c.x += this.x_speed*(0.2*c.overlaps+1) // ik weet niet of je hier overlaps wil gebruiken of niet. 
             c.y += this.y_speed*(0.2*c.overlaps+1)
             
-            if(c.in_chamber && c.overlaps < 1 && c.biomass>10 && this.cells.length < this.max_cells) {
+            //if(c.in_chamber && c.overlaps < 3 && c.biomass>10 && this.cells.length < this.max_cells) { // hier weet ik ook niet overlaps gebruiken?
+            if(c.in_chamber && c.overlaps < 100 && c.biomass>10 && this.cells.length < this.max_cells) { // hier weet ik ook niet overlaps gebruiken?
                 let newcell = new Cell(c) 
                 this.cells.push(newcell)
             }
@@ -366,9 +369,9 @@ class Biofilm {
     }
 
     update_grid(){
-        let dR = 0.2
-        let dBB1 = 0.2
-        let dBB2 = 0.2
+        let diff_R = 0.2
+        let diff_BB1 = 0.2
+        let diff_BB2 = 0.2
         let decay_R = 0.001
         let decay_BB = 0.001
 
@@ -377,7 +380,7 @@ class Biofilm {
             for(let j = 0; j < (this.height/this.scale); j++){                            
                 if(this.grid[i][j]) {            
                     this.next_grid[i][j] = {R:this.grid[i][j].R*(1-decay_R), BB1:this.grid[i][j].BB1*(1-decay_BB), BB2:this.grid[i][j].BB2*(1-decay_BB)}
-                    if(i<=1) this.next_grid[i][j].R = 1000
+                    if(i<=1) this.next_grid[i][j].R = 10
                     if(i>=(this.width/this.scale)-1) this.next_grid[i][j].R = 0
                 }
             }
@@ -386,9 +389,10 @@ class Biofilm {
         for(let i = 0; i < (this.width/this.scale); i++){
             for(let j = 0; j < (this.height/this.scale); j++){
                 if(!this.grid[i][j]) continue
-                this.laplace(i,j,'R',dR) 
-                this.laplace(i,j,'BB1',dBB1) 
-                this.laplace(i,j,'BB2',dBB2)                 
+                this.laplace(i,j,'R',diff_R)
+                this.laplace(i,j,'BB1',diff_BB1)
+                this.laplace(i,j,'BB2',diff_BB2)
+                
             }
         }
 
@@ -400,6 +404,7 @@ class Biofilm {
                     this.grid[i][j].BB1 = this.next_grid[i][j].BB1
                     this.grid[i][j].BB2 = this.next_grid[i][j].BB2
 
+                    // Lateral flow
                     if(i>0 && j >this.bottom/this.scale && this.coords_in_chamber(i,j,this.scale)) {
                         this.grid[i][j].R = this.next_grid[i-1][j].R                        
                         this.grid[i][j].BB1 = this.next_grid[i-1][j].BB1                        
@@ -408,11 +413,9 @@ class Biofilm {
                 } 
             }
             
-        // console.log(`R increased by ${sumR_newgrid-sumR_oldgrid}`)
     }
 
     laplace(i,j,metab,d){
-        // console.log(i,j)
         if(i>0 && this.grid[i-1][j]){
             let amount = this.grid[i-1][j][metab]*d
             this.next_grid[i][j][metab] += amount
@@ -439,7 +442,7 @@ class Biofilm {
 
 class Cell{
     constructor(parent){
-        this.id = fetchCellID()
+        this.id = generateCellID()
         let theta = Math.random()*360
         this.x = parent.x + parent.size*Math.cos(theta)
         this.y = parent.y + parent.size*Math.sin(theta)
