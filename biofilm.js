@@ -225,7 +225,7 @@ class Biofilm {
                         let x = i*this.scale + n 
                         let y = j*this.scale + m
                         var off = (y * id.width + x) * 4;
-                        var scale = 3
+                        var scale = 10
                         if(window['metabolite_display'] == 'R') scale = 10
                         var col = Math.floor(this.grid[i][j][window['metabolite_display']]*scale)               
                         pixels[off] = this.viridis[Math.max(0,Math.min(col,this.viridis.length-1))][0]
